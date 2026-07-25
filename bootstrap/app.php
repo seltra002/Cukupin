@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'owner' => EnsureOwner::class,
             'can_input' => EnsureCanInput::class,
         ]);
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
