@@ -103,9 +103,14 @@ Railway pakai builder **Railpack** (auto-detect, zero-config) — begitu `compos
 
 Build sebelumnya gagal karena repo yang di-push cuma berisi folder overlay (app/database/resources/routes doang), tanpa `composer.json`/`artisan`/`public/`/`bootstrap/` — jadi Railway (Railpack) nggak ngedetect ini sebagai project PHP, malah dianggep static Vite site. Paket ini udah lengkap semua file skeleton-nya, jadi tinggal `composer install` lokal sekali buat generate `vendor/` (dan `composer.lock`), lalu push.
 
+## Kenapa Ada Error Kedua (Security Advisory)
+
+Laravel 11 udah **EOL (habis masa dukungan keamanan) sejak 12 Maret 2026** — nggak dapet patch keamanan lagi selamanya. Composer versi baru (2.9+) otomatis nge-block instalasi package yang punya advisory aktif tanpa patch, makanya `laravel/framework: ^11.31` ke-reject total. Paket ini udah di-upgrade ke **Laravel 12** (masih aktif disupport sampai Feb 2027). `maatwebsite/excel` juga sementara dilepas (butuh `ext-gd` yang belum ke-setup, dan fiturnya belum diimplementasi) — detail di `composer-packages.md`.
+
 ## Catatan Penting
 
 - **Nggak ada payment gateway/QRIS** — semua modul Dompet/Utang-Piutang/Tabungan itu pencatatan manual.
 - **Auth dibikin custom** (bukan Breeze) — cukup login/register, tanpa email verification/password reset dulu (bisa nyusul di fase berikutnya kalau perlu).
 - **WalletService** (`app/Services/WalletService.php`) jaga konsistensi saldo dompet, transfer, dan setoran tabungan.
-- **Export Excel/PDF** buat modul Laporan belum diimplementasi (dependency-nya udah ada di composer.json) — kasih tau kalau mau gw susulin.
+- **Export PDF** (`barryvdh/laravel-dompdf`) dependency-nya udah ada, tinggal diimplementasi. **Export Excel** sementara dilepas — lihat `composer-packages.md` buat cara nambahnya lagi.
+- Karena nggak bisa tes lokal, jalur testing lo adalah push → Railway build. Kalau ada error build lagi, **paste full log-nya** — kebanyakan error di tahap ini muncul di log build (bukan runtime), jadi gampang di-diagnosis dari situ.
