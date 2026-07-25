@@ -27,5 +27,6 @@ export default {
       },
     },
   },
-  plugins: [require('@tailwindcss/forms')],
+  import forms from '@tailwindcss/forms';
+  plugins: [forms],
 };
