@@ -1,4 +1,6 @@
 /** Design tokens brand Cukupin */
+import forms from '@tailwindcss/forms';
+
 export default {
   content: [
     './resources/**/*.blade.php',
@@ -27,6 +29,5 @@ export default {
       },
     },
   },
-  import forms from '@tailwindcss/forms';
   plugins: [forms],
 };
