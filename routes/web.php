@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Livewire\Dashboard;
 use App\Livewire\Debts\DebtList;
@@ -12,7 +14,17 @@ use Illuminate\Support\Facades\Route;
 // Webhook Telegram — publik, jangan pakai middleware auth
 Route::post('/telegram/webhook', TelegramWebhookController::class);
 
-Route::middleware(['auth', 'verified'])->group(function () {
+// Auth (custom, tanpa Breeze)
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [RegisteredUserController::class, 'store']);
+});
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')->name('logout');
+
+Route::middleware('auth')->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
     Route::get('/kebutuhan', ItemList::class)->name('items.index');
     Route::get('/dompet', WalletList::class)->name('wallets.index');
@@ -31,5 +43,3 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::get('/', function () {
     return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
 });
-
-require __DIR__.'/auth.php';

@@ -1,68 +1,44 @@
 # Cukupin — Sistem Pencatatan Kebutuhan Rumah Tangga (MVP)
 
-Paket ini berisi **source code aplikasi** (models, migrations, Livewire components, views, routes) yang siap ditaruh di atas instalasi Laravel 11 fresh. Karena environment yang dipakai buat nulis kode ini nggak punya akses ke Packagist, kamu perlu jalanin `composer install` di mesin/CI kamu sendiri — semua source di sini murni PHP/Blade, nggak butuh proses "build" tambahan di luar itu.
+Project Laravel 11 + Livewire 3 **lengkap**, siap langsung di-`composer install` lalu di-deploy ke Railway. Nggak perlu `composer create-project` lagi — semua file skeleton (composer.json, artisan, bootstrap, public/index.php, config/*, migration default) udah ada di paket ini.
 
 ## Isi Paket
 
 ```
-app/Models/            → 13 model (Household, User, Item, Wallet, Debt, SavingsGoal, dst)
-app/Livewire/          → 6 komponen full-page (Dashboard, Items, Wallets, Debts, Savings, Users)
-app/Services/          → WalletService (logika mutasi dompet, transfer, koneksi ke tabungan)
-app/Http/Middleware/   → EnsureOwner, EnsureCanInput
-app/Http/Controllers/  → TelegramWebhookController, RegisteredUserController (override Breeze)
-database/migrations/   → 14 migration (lengkap semua tabel)
-database/seeders/      → Demo data end-to-end
-resources/views/       → Layout + semua Blade view Livewire, styling brand Cukupin
-routes/web.php         → Semua route + middleware
-tailwind.config.js     → Design token brand Cukupin (warna, font)
-nixpacks.toml          → Config build & start buat Railway
-.env.example            → Template environment variable
-composer-packages.md   → Daftar package Composer yang perlu ditambahkan
-config-additions.md    → Potongan config yang perlu ditempel manual (services.php, bootstrap/app.php, dst)
+app/                    → Models, Livewire components, Controllers, Middleware, Services
+bootstrap/app.php       → Konfigurasi routing & middleware alias (owner, can_input) - udah baked in
+config/                 → Semua config Laravel (services.php udah ada Telegram, livewire.php udah ada layout)
+database/migrations/    → Migration default Laravel + 14 migration modul Cukupin
+database/seeders/       → Demo data end-to-end
+public/index.php        → Entry point
+resources/views/        → Layout, view auth (login/register custom), view Livewire
+routes/web.php          → Semua route (auth + modul), udah lengkap
+composer.json           → Semua dependency PHP
+package.json            → Tailwind, Vite
 ```
 
-## 1. Setup Project Lokal
+## 1. Setup Lokal
 
 ```bash
-# 1. Bikin project Laravel baru
-composer create-project laravel/laravel cukupin
-cd cukupin
-
-# 2. Install package yang dibutuhkan (detail di composer-packages.md)
-composer require livewire/livewire
-composer require laravel/breeze --dev
-php artisan breeze:install blade
-composer require maatwebsite/excel barryvdh/laravel-dompdf
-
-# 3. Copy semua isi paket ini ke folder project (timpa yang bentrok, misal RegisteredUserController)
-#    - app/, database/migrations/, database/seeders/, resources/views/, routes/web.php,
-#      tailwind.config.js, resources/css/app.css, package.json, vite.config.js, nixpacks.toml,
-#      .env.example, .gitignore
-
-# 4. Terapkan potongan config manual — ikuti config-additions.md:
-#    - config/services.php (tambah blok telegram)
-#    - bootstrap/app.php (daftar middleware alias owner & can_input)
-#    - config/livewire.php (set default layout)
-#    - resources/views/auth/register.blade.php (tambah field household_name)
-
-# 5. Install dependency JS & build asset
+composer install
 npm install
-npm run build
-
-# 6. Setup environment
 cp .env.example .env
 php artisan key:generate
+```
 
-# 7. Migrasi & seed database (pastikan DB lokal udah jalan & disetting di .env)
+Setting koneksi database di `.env` (MySQL lokal, atau pakai SQLite: `DB_CONNECTION=sqlite` + `touch database/database.sqlite`).
+
+```bash
 php artisan migrate --seed
-
-# 8. Jalanin lokal
+npm run build
 php artisan serve
 ```
 
 Login demo (dari seeder):
 - **Owner:** owner@cukupin.test / password
 - **User (bisa input):** user@cukupin.test / password
+
+Coba klik-klik semua menu dulu di lokal sebelum push, pastiin nggak ada error 500.
 
 ## 2. Push ke GitHub
 
@@ -71,45 +47,65 @@ git init
 git add .
 git commit -m "Initial commit: Cukupin MVP"
 gh repo create cukupin --private --source=. --push
-# atau manual: bikin repo kosong di github.com, lalu
-# git remote add origin https://github.com/<username>/cukupin.git
-# git push -u origin main
+```
+
+Pastiin struktur repo di GitHub kelihatan kayak gini (root repo harus ada `composer.json` dan `artisan`):
+```
+app/  bootstrap/  config/  database/  public/  resources/  routes/
+composer.json  artisan  package.json  vite.config.js  tailwind.config.js  .env.example
 ```
 
 ## 3. Deploy ke Railway
 
-1. **Bikin project baru di Railway** → "Deploy from GitHub repo" → pilih repo `cukupin`.
-2. **Tambah plugin MySQL** di project yang sama (Railway → "+ New" → Database → MySQL).
-3. Railway otomatis kasih variabel `MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER`, `MYSQLPASSWORD` ke service MySQL-nya. Di service **web** kamu, buka tab Variables dan **map** ke nama yang dipakai Laravel:
+Railway pakai builder **Railpack** (auto-detect, zero-config) — begitu `composer.json` & `artisan` kedetect di root repo, dia otomatis ngerti ini project Laravel dan jalanin lewat FrankenPHP + Caddy, document root otomatis di-set ke `public/`.
+
+1. **New Project** → **Deploy from GitHub repo** → pilih repo `cukupin`.
+2. **Tambah plugin MySQL** di project yang sama (`+ New` → Database → MySQL).
+3. Di service **web**, buka tab **Variables**, tambahin (klik Raw Editor biar cepat):
    ```
+   APP_NAME=Cukupin
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_KEY=                      # generate dari lokal: php artisan key:generate --show
+   APP_URL=${{RAILWAY_PUBLIC_DOMAIN}}
    DB_CONNECTION=mysql
    DB_HOST=${{MySQL.MYSQLHOST}}
    DB_PORT=${{MySQL.MYSQLPORT}}
    DB_DATABASE=${{MySQL.MYSQLDATABASE}}
    DB_USERNAME=${{MySQL.MYSQLUSER}}
    DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+   SESSION_DRIVER=database
+   QUEUE_CONNECTION=database
+   CACHE_STORE=database
+   TELEGRAM_BOT_TOKEN=
    ```
-4. Generate `APP_KEY` di lokal (`php artisan key:generate --show`) lalu paste hasilnya sebagai variabel `APP_KEY` di Railway — **jangan** biarkan Railway generate ulang tiap deploy, nanti data terenkripsi kebaca beda tiap restart.
-5. Set variabel lain sesuai `.env.example` (`APP_URL` diisi domain Railway kamu, `TELEGRAM_BOT_TOKEN`, dll).
-6. Railway otomatis detect `nixpacks.toml` di root repo dan jalanin build + migrate + start sesuai isinya.
-7. Setelah deploy sukses, jalanin seed sekali lewat Railway CLI kalau perlu demo data:
-   ```bash
-   railway run php artisan db:seed
+   **Penting:** `APP_KEY` generate sekali dari lokal terus paste hasilnya — jangan biarin kosong/regenerate tiap deploy.
+4. Di tab **Settings** service web, bagian **Deploy**, set **Custom Start Command**:
    ```
+   php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT
+   ```
+   (Railpack biasanya udah otomatis jalanin start command yang sesuai buat Laravel via FrankenPHP, tapi kalau servingnya nggak otomatis migrate, custom start command ini yang mastiin migration jalan tiap deploy.)
+5. **Generate Domain** di tab Networking biar dapet URL publik.
+6. Push ulang / trigger redeploy. Build sekarang harusnya kebaca sebagai PHP/Laravel, bukan static Vite site lagi.
+7. Kalau perlu demo data: `railway run php artisan db:seed`.
 
 ## 4. Setup Bot Telegram (Gratis)
 
-1. Chat **@BotFather** di Telegram → `/newbot` → ikuti instruksi → catat token yang dikasih.
-2. Masukin token itu ke variabel `TELEGRAM_BOT_TOKEN` di Railway.
-3. Daftarkan webhook (jalankan sekali dari browser/Postman, ganti `<TOKEN>` dan `<APP_URL>`):
+1. Chat **@BotFather** di Telegram → `/newbot` → catat token.
+2. Masukin ke variabel `TELEGRAM_BOT_TOKEN` di Railway.
+3. Daftarkan webhook (buka URL ini sekali di browser, ganti `<TOKEN>` & `<APP_URL>`):
    ```
    https://api.telegram.org/bot<TOKEN>/setWebhook?url=<APP_URL>/telegram/webhook
    ```
-4. Buka bot di Telegram, `/start`, lalu ambil kode verifikasi dari halaman **Profil & Telegram** di web, kirim ke bot buat nyambungin akun.
+4. Buka bot, `/start`, ambil kode verifikasi dari halaman **Profil & Telegram** di web, kirim ke bot.
+
+## Kenapa Kemarin Error
+
+Build sebelumnya gagal karena repo yang di-push cuma berisi folder overlay (app/database/resources/routes doang), tanpa `composer.json`/`artisan`/`public/`/`bootstrap/` — jadi Railway (Railpack) nggak ngedetect ini sebagai project PHP, malah dianggep static Vite site. Paket ini udah lengkap semua file skeleton-nya, jadi tinggal `composer install` lokal sekali buat generate `vendor/` (dan `composer.lock`), lalu push.
 
 ## Catatan Penting
 
-- **Nggak ada payment gateway/QRIS** — semua nominal di modul Dompet/Utang-Piutang/Tabungan itu pencatatan manual, bukan transaksi uang riil.
-- **WalletService** (`app/Services/WalletService.php`) yang jaga konsistensi saldo: validasi `allow_negative`, catat mutasi transfer sebagai 2 entri, dan otomatis motong saldo dompet kalau setoran tabungan pilih sumber dompet.
-- Kolom `stock_status` di modul Kebutuhan masih manual (owner/user pilih aman/menipis/habis pas input). Kalau mau full-otomatis (misal berdasarkan pola konsumsi), itu logika tambahan buat fase berikutnya.
-- Export Excel/PDF di modul Laporan **belum ditulis di paket ini** — perlu ditambah pakai `maatwebsite/excel` dan `barryvdh/laravel-dompdf` yang udah di-list di dependency. Kasih tau kalau mau gw susulin komponen Laporan + export-nya.
+- **Nggak ada payment gateway/QRIS** — semua modul Dompet/Utang-Piutang/Tabungan itu pencatatan manual.
+- **Auth dibikin custom** (bukan Breeze) — cukup login/register, tanpa email verification/password reset dulu (bisa nyusul di fase berikutnya kalau perlu).
+- **WalletService** (`app/Services/WalletService.php`) jaga konsistensi saldo dompet, transfer, dan setoran tabungan.
+- **Export Excel/PDF** buat modul Laporan belum diimplementasi (dependency-nya udah ada di composer.json) — kasih tau kalau mau gw susulin.
