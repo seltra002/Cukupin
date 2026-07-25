@@ -12,7 +12,7 @@ use App\Livewire\Wallets\WalletList;
 use Illuminate\Support\Facades\Route;
 
 // Webhook Telegram — publik, jangan pakai middleware auth
-Route::post('/telegram/webhook', TelegramWebhookController::class);
+Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
 
 // Auth (custom, tanpa Breeze)
 Route::middleware('guest')->group(function () {
